@@ -5,22 +5,17 @@ async function handler(req: any, res: any) {
     return;
   }
 
-  const url =
-    `https://api.metalpriceapi.com/v1/latest` +
-    `?api_key=${encodeURIComponent(apiKey)}` +
-    `&base=USD&currencies=XAU,ZAR,MZN`;
-
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      const text = await response.text();
-      res.status(response.status).json({ error: text || 'Upstream error' });
-      return;
-    }
+    const primary = await fetchMetalPriceApi(apiKey);
+    const fallback = primary?.success === false ? await fetchMetalsApi(apiKey) : null;
+    const data = primary?.success === false && fallback ? fallback : primary;
 
-    const data = await response.json();
-    if (data?.success === false) {
-      res.status(502).json({ error: data?.error?.info || 'Upstream error' });
+    if (!data || data.success === false) {
+      res.status(502).json({
+        error: data?.error?.info || data?.error?.message || 'Upstream error',
+        provider: data?.provider || 'unknown',
+        code: data?.error?.code || null
+      });
       return;
     }
 
@@ -53,7 +48,9 @@ async function handler(req: any, res: any) {
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
     res.status(200).json({
-      timestamp: data?.timestamp ? new Date(data.timestamp * 1000).toISOString() : new Date().toISOString(),
+      timestamp: data?.timestamp
+        ? new Date(data.timestamp * 1000).toISOString()
+        : new Date().toISOString(),
       usdPerOz,
       usdToZar,
       usdToMzn
@@ -76,4 +73,56 @@ function resolveUsdPerOz(rates: any): number | null {
   const xau = numberOrNull(rates.XAU);
   if (!xau) return null;
   return xau < 1 ? 1 / xau : xau;
+}
+
+async function fetchMetalPriceApi(apiKey: string): Promise<any> {
+  const url =
+    `https://api.metalpriceapi.com/v1/latest` +
+    `?api_key=${encodeURIComponent(apiKey)}` +
+    `&base=USD&currencies=XAU,ZAR,MZN`;
+
+  const response = await fetch(url);
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { success: false, provider: 'metalpriceapi', error: { info: text } };
+  }
+
+  if (!response.ok || data?.success === false) {
+    return {
+      success: false,
+      provider: 'metalpriceapi',
+      error: data?.error || { info: text, code: response.status }
+    };
+  }
+
+  return { ...data, provider: 'metalpriceapi' };
+}
+
+async function fetchMetalsApi(apiKey: string): Promise<any> {
+  const url =
+    `https://metals-api.com/api/latest` +
+    `?access_key=${encodeURIComponent(apiKey)}` +
+    `&base=USD&symbols=XAU,ZAR,MZN`;
+
+  const response = await fetch(url);
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { success: false, provider: 'metals-api', error: { info: text } };
+  }
+
+  if (!response.ok || data?.success === false) {
+    return {
+      success: false,
+      provider: 'metals-api',
+      error: data?.error || { info: text, code: response.status }
+    };
+  }
+
+  return { ...data, provider: 'metals-api' };
 }
