@@ -42,9 +42,9 @@
                   [(ngModel)]="selectedCurrency" 
                   (ionChange)="onCurrencyChange($event)"
                   interface="popover">
-                  <ion-select-option value="USD">🇺🇸 USD</ion-select-option>
-                  <ion-select-option value="ZAR">🇿🇦 ZAR (Rand)</ion-select-option>
                   <ion-select-option value="MZN">🇲🇿 MZN (Metical)</ion-select-option>
+                  <ion-select-option value="USD">🇺🇸 Dollar (USD)</ion-select-option>
+                  <ion-select-option value="ZAR">🇿🇦 ZAR (Rand)</ion-select-option>
                 </ion-select>
               </ion-item>
             </ion-col>
@@ -70,7 +70,7 @@
     <!-- Chart Card -->
     <ion-card class="chart-card">
       <ion-card-header>
-        <ion-card-subtitle>30-Day Price History</ion-card-subtitle>
+        <ion-card-subtitle>Recent Price History</ion-card-subtitle>
       </ion-card-header>
       
       <ion-card-content>
@@ -108,7 +108,7 @@
             <ion-icon name="analytics" class="info-icon"></ion-icon>
             <div>
               <div class="info-label">Data Points</div>
-              <div class="info-value">30 Days</div>
+              <div class="info-value">30 Updates</div>
             </div>
           </div>
         </div>

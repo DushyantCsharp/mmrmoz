@@ -1,21 +1,27 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, interval } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, timer, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { GoldPrice, Currency, Weight, PriceData, ConversionRates } from '../models/gold.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class GoldPriceService {
+  private readonly apiUrl = '/api/gold';
+  private readonly updateIntervalMs = 60000;
+  private readonly maxHistoryPoints = 30;
+
   private currentPriceSubject = new BehaviorSubject<GoldPrice | null>(null);
   public currentPrice$: Observable<GoldPrice | null> = this.currentPriceSubject.asObservable();
 
   private historicalDataSubject = new BehaviorSubject<PriceData[]>([]);
   public historicalData$: Observable<PriceData[]> = this.historicalDataSubject.asObservable();
 
-  // Current conversion rates (these would normally come from an API)
+  // Current conversion rates (updated from live API)
   private conversionRates: ConversionRates = {
-    USD_ZAR: 18.50, // 1 USD = 18.50 ZAR
-    USD_MZN: 63.75  // 1 USD = 63.75 MZN
+    USD_ZAR: 18.50,
+    USD_MZN: 63.75
   };
 
   // Weight conversion constants (all relative to troy ounce)
@@ -25,70 +31,65 @@ export class GoldPriceService {
     kg: 0.0311035    // 1 troy oz = 0.0311035 kg
   };
 
-  constructor() {
-    this.initializeMockData();
+  constructor(private http: HttpClient) {
     this.startPriceUpdates();
   }
 
-  private initializeMockData(): void {
-    // Initialize with historical data for the past 30 days
-    const historicalData: PriceData[] = [];
-    const basePrice = 2050; // Base gold price per troy ounce in USD
-    const now = new Date();
-
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      // Add some realistic variation
-      const variation = Math.sin(i / 5) * 30 + Math.random() * 20;
-      const price = basePrice + variation;
-      
-      historicalData.push({
-        date,
-        price: Math.round(price * 100) / 100
+  private startPriceUpdates(): void {
+    // Poll live prices on an interval
+    timer(0, this.updateIntervalMs)
+      .pipe(
+        switchMap(() => this.fetchLivePrice()),
+        catchError(err => {
+          console.error('Failed to fetch live price', err);
+          return of(null);
+        })
+      )
+      .subscribe(payload => {
+        if (!payload) return;
+        this.applyLivePrice(payload);
       });
+  }
+
+  private fetchLivePrice(): Observable<LivePricePayload | null> {
+    return this.http.get<LivePricePayload>(this.apiUrl).pipe(
+      map(payload => {
+        if (!payload || !payload.usdPerOz) return null;
+        return payload;
+      })
+    );
+  }
+
+  private applyLivePrice(payload: LivePricePayload): void {
+    this.conversionRates = {
+      USD_ZAR: payload.usdToZar,
+      USD_MZN: payload.usdToMzn
+    };
+
+    this.updateCurrentPrice(payload.usdPerOz, payload.timestamp);
+
+    const currentData = this.historicalDataSubject.value;
+    const newData = [
+      ...currentData,
+      {
+        date: new Date(payload.timestamp),
+        price: Math.round(payload.usdPerOz * 100) / 100
+      }
+    ];
+
+    if (newData.length > this.maxHistoryPoints) {
+      newData.shift();
     }
 
-    this.historicalDataSubject.next(historicalData);
-    
-    // Set initial current price
-    this.updateCurrentPrice(historicalData[historicalData.length - 1].price);
+    this.historicalDataSubject.next(newData);
   }
 
-  private startPriceUpdates(): void {
-    // Update price every 5 seconds with small variations
-    interval(5000).subscribe(() => {
-      const currentData = this.historicalDataSubject.value;
-      const lastPrice = currentData[currentData.length - 1].price;
-      
-      // Small random variation (-0.5% to +0.5%)
-      const variation = (Math.random() - 0.5) * lastPrice * 0.01;
-      const newPrice = lastPrice + variation;
-      
-      this.updateCurrentPrice(newPrice);
-      
-      // Add to historical data
-      const newData = [...currentData, {
-        date: new Date(),
-        price: Math.round(newPrice * 100) / 100
-      }];
-      
-      // Keep only last 30 data points
-      if (newData.length > 30) {
-        newData.shift();
-      }
-      
-      this.historicalDataSubject.next(newData);
-    });
-  }
-
-  private updateCurrentPrice(priceUSD: number): void {
+  private updateCurrentPrice(priceUSD: number, timestamp?: string): void {
     const price: GoldPrice = {
       usd: Math.round(priceUSD * 100) / 100,
       zar: Math.round(priceUSD * this.conversionRates.USD_ZAR * 100) / 100,
       mzn: Math.round(priceUSD * this.conversionRates.USD_MZN * 100) / 100,
-      timestamp: new Date()
+      timestamp: timestamp ? new Date(timestamp) : new Date()
     };
     
     this.currentPriceSubject.next(price);
@@ -122,20 +123,25 @@ export class GoldPriceService {
     return this.convertPrice(basePrice, 'oz', weight);
   }
 
-  public getHistoricalData(currency: Currency): PriceData[] {
+  public getHistoricalData(currency: Currency, weight: Weight = 'oz'): PriceData[] {
     const historicalData = this.historicalDataSubject.value;
     
-    if (currency === 'USD') {
-      return historicalData;
-    }
-    
-    // Convert to selected currency
-    const rate = currency === 'ZAR' ? this.conversionRates.USD_ZAR : this.conversionRates.USD_MZN;
-    
-    return historicalData.map(data => ({
-      date: data.date,
-      price: Math.round(data.price * rate * 100) / 100
-    }));
+    // Convert to selected currency and weight (stored as USD per oz)
+    const rate =
+      currency === 'USD'
+        ? 1
+        : currency === 'ZAR'
+        ? this.conversionRates.USD_ZAR
+        : this.conversionRates.USD_MZN;
+
+    return historicalData.map(data => {
+      const priceInCurrencyPerOz = data.price * rate;
+      const priceInWeight = this.convertPrice(priceInCurrencyPerOz, 'oz', weight);
+      return {
+        date: data.date,
+        price: priceInWeight
+      };
+    });
   }
 
   public getCurrencySymbol(currency: Currency): string {
@@ -153,4 +159,11 @@ export class GoldPriceService {
       case 'kg': return 'Kilogram';
     }
   }
+}
+
+interface LivePricePayload {
+  timestamp: string;
+  usdPerOz: number;
+  usdToZar: number;
+  usdToMzn: number;
 }

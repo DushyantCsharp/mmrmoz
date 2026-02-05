@@ -8,8 +8,8 @@ A professional cross-platform mobile and web application for tracking gold price
 
 ## Features
 
-✨ **Real-time Gold Prices** - Live price updates every 5 seconds
-📊 **Interactive Charts** - 30-day historical price data visualization
+✨ **Real-time Gold Prices** - Live price updates from market data
+📊 **Interactive Charts** - Recent price history visualization
 💱 **Multi-Currency Support**:
 - USD (US Dollar)
 - ZAR (South African Rand)
@@ -196,7 +196,13 @@ private conversionRates: ConversionRates = {
 
 ### Connecting to Real API
 
-Replace the mock data in `GoldPriceService` with actual API calls:
+This app uses a Vercel Serverless Function to fetch live gold and FX rates.
+
+Set the following environment variable in Vercel:
+
+- `METALPRICE_API_KEY`
+
+The function is located at `api/gold.ts` and the app calls it via `/api/gold`.
 
 ```typescript
 // Example with a real API

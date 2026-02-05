@@ -14,7 +14,7 @@ export class HomePage implements OnInit, OnDestroy {
   selectedCurrency: Currency = 'USD';
   selectedWeight: Weight = 'oz';
   
-  currencies: Currency[] = ['USD', 'ZAR', 'MZN'];
+  currencies: Currency[] = ['MZN', 'USD', 'ZAR'];
   weights: Weight[] = ['oz', 'g', 'kg'];
   
   private priceSubscription?: Subscription;
@@ -101,7 +101,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   updateChart() {
-    const historicalData = this.goldPriceService.getHistoricalData(this.selectedCurrency);
+    const historicalData = this.goldPriceService.getHistoricalData(this.selectedCurrency, this.selectedWeight);
     
     this.lineChartData.labels = historicalData.map(d => 
       d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
