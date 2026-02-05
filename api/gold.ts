@@ -6,7 +6,7 @@ async function handler(req: any, res: any) {
   }
 
   try {
-    const usd = await fetchCommodityPrice(apiKey, 'USD');
+    const usd = await fetchCommodityPrice(apiKey);
     if (!usd || usd.success === false) {
       res.status(502).json({
         error: usd?.message || usd?.error || 'Upstream error',
@@ -16,26 +16,17 @@ async function handler(req: any, res: any) {
       return;
     }
 
-    const usdPerOz = numberOrNull(usd?.rates?.XAU?.rate ?? usd?.rates?.XAU);
+    const usdPerOz = numberOrNull(usd?.rates?.XAU);
 
-    // Try commoditypriceapi quotes for ZAR/MZN (plan-dependent)
-    const zarQuote = await fetchCommodityPrice(apiKey, 'ZAR');
-    const mznQuote = await fetchCommodityPrice(apiKey, 'MZN');
-    const zarPerOz = numberOrNull(zarQuote?.rates?.XAU?.rate ?? zarQuote?.rates?.XAU);
-    const mznPerOz = numberOrNull(mznQuote?.rates?.XAU?.rate ?? mznQuote?.rates?.XAU);
-
-    let usdToZar = zarPerOz && usdPerOz ? zarPerOz / usdPerOz : null;
-    let usdToMzn = mznPerOz && usdPerOz ? mznPerOz / usdPerOz : null;
-
-    if (!usdToZar || !usdToMzn) {
-      const fx = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=ZAR,MZN');
-      if (fx.ok) {
-        const fxData = await fx.json();
-        const fxRates = fxData?.rates || {};
-        if (!usdToZar) usdToZar = numberOrNull(fxRates.ZAR);
-        if (!usdToMzn) usdToMzn = numberOrNull(fxRates.MZN);
-      }
+    const fx = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=ZAR,MZN');
+    if (!fx.ok) {
+      res.status(502).json({ error: 'FX rates unavailable' });
+      return;
     }
+    const fxData = await fx.json();
+    const fxRates = fxData?.rates || {};
+    const usdToZar = numberOrNull(fxRates.ZAR);
+    const usdToMzn = numberOrNull(fxRates.MZN);
 
     if (!usdPerOz || !usdToZar || !usdToMzn) {
       res.status(502).json({
@@ -68,12 +59,12 @@ function numberOrNull(value: any): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-async function fetchCommodityPrice(apiKey: string, quote: string): Promise<any> {
+async function fetchCommodityPrice(apiKey: string): Promise<any> {
   const url =
-    `https://api.commoditypriceapi.com/v2/latest` +
+    `https://api.commoditypriceapi.com/v2/rates/latest` +
     `?apiKey=${encodeURIComponent(apiKey)}` +
     `&symbols=XAU` +
-    `&quote=${encodeURIComponent(quote)}`;
+    `&quote=USD`;
 
   const response = await fetch(url, {
     headers: {
