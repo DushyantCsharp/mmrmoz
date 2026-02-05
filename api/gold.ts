@@ -18,7 +18,7 @@ async function handler(req: any, res: any) {
 
     const usdPerOz = numberOrNull(usd?.rates?.XAU);
 
-    const fx = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=ZAR,MZN');
+    const fx = await fetch('https://open.er-api.com/v6/latest/USD');
     if (!fx.ok) {
       res.status(502).json({ error: 'FX rates unavailable' });
       return;
