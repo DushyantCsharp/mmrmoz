@@ -1,35 +1,32 @@
 async function handler(req: any, res: any) {
-  const apiKey = process.env.METALAPI_KEY;
+  const apiKey = process.env.COMMODITYPRICE_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'Missing METALAPI_KEY' });
+    res.status(500).json({ error: 'Missing COMMODITYPRICE_API_KEY' });
     return;
   }
 
   try {
-    const latest = await fetchMetalApiLatest(apiKey);
+    const latest = await fetchCommodityLatest(apiKey);
     if (!latest || latest.success === false) {
       res.status(502).json({
-        error: latest?.error?.info || latest?.error?.message || 'Upstream error',
-        provider: 'metalapi',
-        code: latest?.error?.code || null
+        error: latest?.message || latest?.error?.info || latest?.error || 'Upstream error',
+        provider: 'commoditypriceapi',
+        code: latest?.code || latest?.error?.code || null
       });
       return;
     }
 
-    const rates = latest?.rates || {};
-    const usdPerOz = resolveUsdPerOz(rates);
-    let usdToZar = numberOrNull(rates.USDZAR ?? rates.ZAR);
-    let usdToMzn = numberOrNull(rates.USDMZN ?? rates.MZN);
+    const usdPerOz = extractLatestRate(latest);
 
-    if (!usdToZar || !usdToMzn) {
-      const fx = await fetch('https://open.er-api.com/v6/latest/USD');
-      if (fx.ok) {
-        const fxData = await fx.json();
-        const fxRates = fxData?.rates || {};
-        if (!usdToZar) usdToZar = numberOrNull(fxRates.ZAR);
-        if (!usdToMzn) usdToMzn = numberOrNull(fxRates.MZN);
-      }
+    const fx = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (!fx.ok) {
+      res.status(502).json({ error: 'FX rates unavailable' });
+      return;
     }
+    const fxData = await fx.json();
+    const fxRates = fxData?.rates || {};
+    const usdToZar = numberOrNull(fxRates.ZAR);
+    const usdToMzn = numberOrNull(fxRates.MZN);
 
     if (!usdPerOz || !usdToZar || !usdToMzn) {
       res.status(502).json({
@@ -43,12 +40,9 @@ async function handler(req: any, res: any) {
       return;
     }
 
-    let monthlyHistory = await fetchMonthlyTimeseries(apiKey);
-    if (monthlyHistory.length < 2) {
-      monthlyHistory = await fetchMonthlyHistorical(apiKey);
-    }
+    const monthlyHistory = await fetchMonthlyHistory(apiKey);
 
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.status(200).json({
       timestamp: latest?.timestamp
         ? new Date(latest.timestamp * 1000).toISOString()
@@ -70,80 +64,89 @@ function numberOrNull(value: any): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function resolveUsdPerOz(rates: any): number | null {
-  const direct = numberOrNull(rates.USDXAU);
-  if (direct) return direct;
-  const xau = numberOrNull(rates.XAU);
-  if (!xau) return null;
-  // If XAU is oz per USD, invert. If already USD per oz, leave.
-  return xau < 1 ? 1 / xau : xau;
-}
-
-async function fetchMetalApiLatest(apiKey: string): Promise<any> {
+async function fetchCommodityLatest(apiKey: string): Promise<any> {
   const url =
-    `https://metalapi.com/api/v1/latest` +
-    `?api_key=${encodeURIComponent(apiKey)}` +
-    `&base=USD&symbols=XAU,USDXAU,ZAR,MZN,USDZAR,USDMZN`;
+    `https://api.commoditypriceapi.com/v2/rates/latest` +
+    `?symbols=XAU`;
 
-  return fetchJson(url);
+  return fetchJson(url, apiKey);
 }
 
-async function fetchMonthlyTimeseries(apiKey: string): Promise<Array<{ date: string; price: number }>> {
+async function fetchMonthlyHistory(apiKey: string): Promise<Array<{ date: string; price: number }>> {
   const end = new Date();
   const start = new Date();
   start.setMonth(start.getMonth() - 11);
   start.setDate(1);
 
   const url =
-    `https://metalapi.com/api/v1/timeseries` +
-    `?api_key=${encodeURIComponent(apiKey)}` +
-    `&start_date=${toYmd(start)}` +
-    `&end_date=${toYmd(end)}` +
-    `&base=USD&symbols=XAU,USDXAU`;
+    `https://api.commoditypriceapi.com/v2/rates/timeseries` +
+    `?symbols=XAU` +
+    `&startDate=${toYmd(start)}` +
+    `&endDate=${toYmd(end)}`;
 
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, apiKey);
   if (!data || data.success === false) return [];
 
-  const ratesByDate = data?.rates || {};
-  const byMonth: Record<string, { date: string; price: number }> = {};
+  return collapseToMonthly(extractTimeseriesRates(data));
+}
 
-  for (const [date, rates] of Object.entries(ratesByDate)) {
-    const price = resolveUsdPerOz(rates as any);
-    if (!price) continue;
-    const monthKey = String(date).slice(0, 7);
-    const existing = byMonth[monthKey];
-    if (!existing || String(date) > existing.date) {
-      byMonth[monthKey] = { date: String(date), price: Math.round(price * 100) / 100 };
+function extractLatestRate(data: any): number | null {
+  const rate = numberOrNull(data?.rates?.XAU);
+  if (rate) return rate;
+  const alt = numberOrNull(data?.rates?.xau);
+  if (alt) return alt;
+  return null;
+}
+
+function extractTimeseriesRates(data: any): Array<{ date: string; price: number }> {
+  const rates = data?.rates || {};
+  const points: Array<{ date: string; price: number }> = [];
+
+  // Shape A: rates: { "2025-01-01": { "XAU": 2000 } }
+  for (const [date, value] of Object.entries(rates)) {
+    if (typeof value === 'number') {
+      const price = numberOrNull(value);
+      if (price) points.push({ date, price });
+      continue;
+    }
+    if (value && typeof value === 'object') {
+      const vAny: any = value;
+      const price = numberOrNull(vAny.XAU ?? vAny.xau ?? vAny.close ?? vAny?.XAU?.close);
+      if (price) points.push({ date, price });
     }
   }
 
-  const months = Object.keys(byMonth).sort();
-  return months.map(m => byMonth[m]);
-}
-
-async function fetchMonthlyHistorical(apiKey: string): Promise<Array<{ date: string; price: number }>> {
-  const end = new Date();
-  const months: Array<{ date: string; price: number }> = [];
-
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(end.getFullYear(), end.getMonth() - i + 1, 0); // last day of month
-    const url =
-      `https://metalapi.com/api/v1/historical/${toYmd(d)}` +
-      `?api_key=${encodeURIComponent(apiKey)}` +
-      `&base=USD&symbols=XAU,USDXAU`;
-
-    const data = await fetchJson(url);
-    if (!data || data.success === false) continue;
-    const price = resolveUsdPerOz(data?.rates || {});
-    if (!price) continue;
-    months.push({ date: toYmd(d), price: Math.round(price * 100) / 100 });
+  // Shape B: rates: { XAU: { "2025-01-01": 2000 } }
+  if (points.length === 0 && rates?.XAU && typeof rates.XAU === 'object') {
+    for (const [date, value] of Object.entries(rates.XAU)) {
+      const price = numberOrNull(value);
+      if (price) points.push({ date, price });
+    }
   }
 
-  return months;
+  return points.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-async function fetchJson(url: string): Promise<any> {
-  const response = await fetch(url);
+function collapseToMonthly(points: Array<{ date: string; price: number }>): Array<{ date: string; price: number }> {
+  const byMonth: Record<string, { date: string; price: number }> = {};
+  for (const point of points) {
+    const monthKey = point.date.slice(0, 7);
+    const existing = byMonth[monthKey];
+    if (!existing || point.date > existing.date) {
+      byMonth[monthKey] = { date: point.date, price: Math.round(point.price * 100) / 100 };
+    }
+  }
+  return Object.keys(byMonth)
+    .sort()
+    .map(key => byMonth[key]);
+}
+
+async function fetchJson(url: string, apiKey: string): Promise<any> {
+  const response = await fetch(url, {
+    headers: {
+      'x-api-key': apiKey
+    }
+  });
   const text = await response.text();
   let data: any = null;
   try {
@@ -151,11 +154,9 @@ async function fetchJson(url: string): Promise<any> {
   } catch {
     return { success: false, error: { info: text, code: response.status } };
   }
-
   if (!response.ok || data?.success === false) {
     return { success: false, error: data?.error || { info: text, code: response.status } };
   }
-
   return data;
 }
 
