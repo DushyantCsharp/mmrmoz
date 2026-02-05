@@ -43,7 +43,10 @@ async function handler(req: any, res: any) {
       return;
     }
 
-    const monthlyHistory = await fetchMonthlyHistory(apiKey);
+    let monthlyHistory = await fetchMonthlyTimeseries(apiKey);
+    if (monthlyHistory.length < 2) {
+      monthlyHistory = await fetchMonthlyHistorical(apiKey);
+    }
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
     res.status(200).json({
@@ -80,52 +83,26 @@ async function fetchMetalApiLatest(apiKey: string): Promise<any> {
   const url =
     `https://metalapi.com/api/v1/latest` +
     `?api_key=${encodeURIComponent(apiKey)}` +
-    `&base=USD&symbols=XAU,ZAR,MZN`;
+    `&base=USD&symbols=XAU,USDXAU,ZAR,MZN,USDZAR,USDMZN`;
 
-  const response = await fetch(url);
-  const text = await response.text();
-  let data: any = null;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    return { success: false, error: { info: text, code: response.status } };
-  }
-
-  if (!response.ok || data?.success === false) {
-    return { success: false, error: data?.error || { info: text, code: response.status } };
-  }
-
-  return data;
+  return fetchJson(url);
 }
 
-async function fetchMonthlyHistory(apiKey: string): Promise<Array<{ date: string; price: number }>> {
+async function fetchMonthlyTimeseries(apiKey: string): Promise<Array<{ date: string; price: number }>> {
   const end = new Date();
   const start = new Date();
   start.setMonth(start.getMonth() - 11);
   start.setDate(1);
 
-  const startDate = toYmd(start);
-  const endDate = toYmd(end);
-
   const url =
     `https://metalapi.com/api/v1/timeseries` +
     `?api_key=${encodeURIComponent(apiKey)}` +
-    `&start_date=${startDate}` +
-    `&end_date=${endDate}` +
-    `&base=USD&symbols=XAU`;
+    `&start_date=${toYmd(start)}` +
+    `&end_date=${toYmd(end)}` +
+    `&base=USD&symbols=XAU,USDXAU`;
 
-  const response = await fetch(url);
-  const text = await response.text();
-  let data: any = null;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    return [];
-  }
-
-  if (!response.ok || data?.success === false) {
-    return [];
-  }
+  const data = await fetchJson(url);
+  if (!data || data.success === false) return [];
 
   const ratesByDate = data?.rates || {};
   const byMonth: Record<string, { date: string; price: number }> = {};
@@ -142,6 +119,44 @@ async function fetchMonthlyHistory(apiKey: string): Promise<Array<{ date: string
 
   const months = Object.keys(byMonth).sort();
   return months.map(m => byMonth[m]);
+}
+
+async function fetchMonthlyHistorical(apiKey: string): Promise<Array<{ date: string; price: number }>> {
+  const end = new Date();
+  const months: Array<{ date: string; price: number }> = [];
+
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(end.getFullYear(), end.getMonth() - i + 1, 0); // last day of month
+    const url =
+      `https://metalapi.com/api/v1/historical/${toYmd(d)}` +
+      `?api_key=${encodeURIComponent(apiKey)}` +
+      `&base=USD&symbols=XAU,USDXAU`;
+
+    const data = await fetchJson(url);
+    if (!data || data.success === false) continue;
+    const price = resolveUsdPerOz(data?.rates || {});
+    if (!price) continue;
+    months.push({ date: toYmd(d), price: Math.round(price * 100) / 100 });
+  }
+
+  return months;
+}
+
+async function fetchJson(url: string): Promise<any> {
+  const response = await fetch(url);
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { success: false, error: { info: text, code: response.status } };
+  }
+
+  if (!response.ok || data?.success === false) {
+    return { success: false, error: data?.error || { info: text, code: response.status } };
+  }
+
+  return data;
 }
 
 function toYmd(date: Date): string {
