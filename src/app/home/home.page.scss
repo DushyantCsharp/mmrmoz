@@ -1,0 +1,223 @@
+ion-content {
+  --background: transparent;
+}
+
+.container {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// Header styling
+.header-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  .logo-icon {
+    font-size: 24px;
+    color: var(--brand-gold);
+  }
+  
+  span {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+}
+
+// Card styling
+ion-card {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  margin-bottom: 20px;
+  
+  ion-card-header {
+    padding-bottom: 8px;
+  }
+  
+  ion-card-subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  ion-card-title {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+}
+
+// Price card styling
+.price-card {
+  text-align: center;
+  padding: 20px 0;
+  
+  .price-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+    
+    .currency-symbol {
+      font-size: 32px;
+      margin-right: 8px;
+      color: var(--brand-gold);
+    }
+    
+    .price-value {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+  }
+  
+  .price-unit {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin: 8px 0 0 0;
+    font-weight: 500;
+  }
+  
+  .timestamp {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 16px;
+  }
+}
+
+// Selector card styling
+.selector-card {
+  .selector-item {
+    --background: transparent;
+    --color: var(--text-primary);
+    
+    ion-label {
+      color: var(--text-secondary) !important;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    
+    ion-select {
+      color: var(--text-primary);
+      font-weight: 600;
+      --placeholder-color: var(--text-secondary);
+      --placeholder-opacity: 0.8;
+      max-width: 100%;
+      
+      &::part(icon) {
+        color: var(--brand-gold);
+      }
+    }
+  }
+}
+
+// Chart card styling
+.chart-card {
+  .chart-container {
+    height: 300px;
+    width: 100%;
+    position: relative;
+    padding: 16px 0;
+  }
+}
+
+// Info card styling
+.info-card {
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      
+      .info-icon {
+        font-size: 32px;
+        color: var(--brand-gold);
+      }
+      
+      .info-label {
+        color: var(--text-secondary);
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      
+      .info-value {
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 700;
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 576px) {
+  .price-card {
+    .price-display {
+      .currency-symbol {
+        font-size: 24px;
+      }
+      
+      .price-value {
+        font-size: 36px;
+      }
+    }
+  }
+  
+  .chart-card {
+    .chart-container {
+      height: 250px;
+    }
+  }
+  
+  .info-card {
+    .info-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      
+      .info-item {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: left;
+        
+        .info-icon {
+          font-size: 24px;
+        }
+      }
+    }
+  }
+}
+
+// Custom select popover styling
+ion-select-popover {
+  ion-list {
+    background: var(--surface-2);
+    
+    ion-item {
+      --background: var(--surface-2);
+      --color: var(--text-primary);
+      
+      &.item-radio-checked {
+        --background: rgba(212, 175, 55, 0.12);
+        --color: var(--brand-gold);
+      }
+    }
+  }
+}

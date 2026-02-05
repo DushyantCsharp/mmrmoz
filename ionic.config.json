@@ -1,0 +1,7 @@
+{
+  "name": "MMR Gold Tracker",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}

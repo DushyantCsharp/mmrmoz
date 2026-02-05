@@ -1,0 +1,119 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="dark">
+    <ion-title>
+      <div class="header-title">
+        <ion-icon name="diamond" class="logo-icon"></ion-icon>
+        <span>MMR - Mozambique Metal Refiners</span>
+      </div>
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" color="dark">
+  <div class="container">
+    
+    <!-- Current Price Card -->
+    <ion-card class="price-card">
+      <ion-card-header>
+        <ion-card-subtitle>Current Gold Price</ion-card-subtitle>
+        <ion-card-title class="price-display">
+          <span class="currency-symbol">{{ currencySymbol }}</span>
+          <span class="price-value">{{ displayPrice }}</span>
+        </ion-card-title>
+        <p class="price-unit">per {{ weightLabel }}</p>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <div class="timestamp" *ngIf="currentPrice">
+          Last updated: {{ currentPrice.timestamp | date:'short' }}
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Selectors Card -->
+    <ion-card class="selector-card">
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="6">
+              <ion-item lines="none" class="selector-item">
+                <ion-label position="stacked">Currency</ion-label>
+                <ion-select 
+                  [(ngModel)]="selectedCurrency" 
+                  (ionChange)="onCurrencyChange($event)"
+                  interface="popover">
+                  <ion-select-option value="USD">🇺🇸 USD</ion-select-option>
+                  <ion-select-option value="ZAR">🇿🇦 ZAR (Rand)</ion-select-option>
+                  <ion-select-option value="MZN">🇲🇿 MZN (Metical)</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+            
+            <ion-col size="6">
+              <ion-item lines="none" class="selector-item">
+                <ion-label position="stacked">Weight</ion-label>
+                <ion-select 
+                  [(ngModel)]="selectedWeight" 
+                  (ionChange)="onWeightChange($event)"
+                  interface="popover">
+                  <ion-select-option value="oz">Troy Ounces</ion-select-option>
+                  <ion-select-option value="g">Grams</ion-select-option>
+                  <ion-select-option value="kg">Kilograms</ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Chart Card -->
+    <ion-card class="chart-card">
+      <ion-card-header>
+        <ion-card-subtitle>30-Day Price History</ion-card-subtitle>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <div class="chart-container">
+          <canvas baseChart
+            [data]="lineChartData"
+            [options]="lineChartOptions"
+            [type]="'line'">
+          </canvas>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Info Card -->
+    <ion-card class="info-card">
+      <ion-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <ion-icon name="trending-up" class="info-icon"></ion-icon>
+            <div>
+              <div class="info-label">Market Status</div>
+              <div class="info-value">Live</div>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <ion-icon name="time" class="info-icon"></ion-icon>
+            <div>
+              <div class="info-label">Updates</div>
+              <div class="info-value">Real-time</div>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <ion-icon name="analytics" class="info-icon"></ion-icon>
+            <div>
+              <div class="info-label">Data Points</div>
+              <div class="info-value">30 Days</div>
+            </div>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMR - Gold Price Tracker Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #000000;
+            color: #FFD700;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #FFD700;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #FFD700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header .icon {
+            font-size: 32px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+            border: 2px solid #FFD700;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.15);
+        }
+
+        .card-title {
+            font-size: 14px;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .price-display {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .price-value {
+            font-size: 56px;
+            font-weight: 700;
+            color: #FFD700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .currency-symbol {
+            font-size: 36px;
+            margin-right: 8px;
+        }
+
+        .price-unit {
+            font-size: 16px;
+            color: #B8860B;
+            margin-top: 8px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #B8860B;
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .selectors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .selector-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .selector-group label {
+            font-size: 12px;
+            color: #FFD700;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .selector-group select {
+            background: #1a1a1a;
+            border: 2px solid #FFD700;
+            color: #FFD700;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .selector-group select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .chart-container {
+            height: 300px;
+            width: 100%;
+            position: relative;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-icon {
+            font-size: 32px;
+            color: #FFD700;
+            margin-bottom: 8px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #B8860B;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #FFD700;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .price-value {
+                font-size: 42px;
+            }
+            
+            .selectors {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 8px 32px rgba(255, 215, 0, 0.15);
+            }
+            50% {
+                box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+            }
+        }
+
+        .card.pulse {
+            animation: pulse 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="icon">💎</span>
+                <span>MMR - Mozambique Metal Refiners</span>
+            </h1>
+        </div>
+
+        <!-- Price Card -->
+        <div class="card pulse">
+            <div class="card-title">Current Gold Price</div>
+            <div class="price-display">
+                <div>
+                    <span class="currency-symbol" id="currencySymbol">$</span>
+                    <span class="price-value" id="priceValue">2,053.45</span>
+                </div>
+                <div class="price-unit" id="priceUnit">per Troy Ounce</div>
+            </div>
+            <div class="timestamp" id="timestamp">Last updated: Just now</div>
+        </div>
+
+        <!-- Selectors Card -->
+        <div class="card">
+            <div class="selectors">
+                <div class="selector-group">
+                    <label>Currency</label>
+                    <select id="currencySelect" onchange="updatePrice()">
+                        <option value="USD">🇺🇸 USD</option>
+                        <option value="ZAR">🇿🇦 ZAR (Rand)</option>
+                        <option value="MZN">🇲🇿 MZN (Metical)</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <label>Weight</label>
+                    <select id="weightSelect" onchange="updatePrice()">
+                        <option value="oz">Troy Ounces</option>
+                        <option value="g">Grams</option>
+                        <option value="kg">Kilograms</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="card">
+            <div class="card-title">30-Day Price History</div>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="card">
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-icon">📈</div>
+                    <div class="info-label">Market Status</div>
+                    <div class="info-value">Live</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">⏱️</div>
+                    <div class="info-label">Updates</div>
+                    <div class="info-value">Real-time</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">📊</div>
+                    <div class="info-label">Data Points</div>
+                    <div class="info-value">30 Days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Conversion rates
+        const conversionRates = {
+            USD_ZAR: 18.50,
+            USD_MZN: 63.75
+        };
+
+        const weightConversions = {
+            oz: 1,
+            g: 31.1035,
+            kg: 0.0311035
+        };
+
+        // Base price in USD per troy ounce
+        let basePrice = 2053.45;
+
+        // Generate mock historical data
+        function generateHistoricalData(days = 30) {
+            const data = [];
+            const labels = [];
+            const now = new Date();
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                
+                const variation = Math.sin(i / 5) * 30 + Math.random() * 20;
+                data.push(Math.round((basePrice + variation) * 100) / 100);
+            }
+            
+            return { labels, data };
+        }
+
+        // Initialize chart
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        const historicalData = generateHistoricalData();
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: historicalData.labels,
+                datasets: [{
+                    label: 'Gold Price (USD/Troy Ounce)',
+                    data: historicalData.data,
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderColor: '#FFD700',
+                    pointBackgroundColor: '#FFD700',
+                    pointBorderColor: '#000',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#FFD700',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#FFD700',
+                        bodyColor: '#FFD700',
+                        borderColor: '#FFD700',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#FFD700',
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: {
+                            color: 'rgba(255, 215, 0, 0.1)'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#FFD700'
+                        },
+                        grid: {
+                            color: 'rgba(255, 215, 0, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        function updatePrice() {
+            const currency = document.getElementById('currencySelect').value;
+            const weight = document.getElementById('weightSelect').value;
+            
+            // Convert currency
+            let price = basePrice;
+            let symbol = '$';
+            
+            if (currency === 'ZAR') {
+                price *= conversionRates.USD_ZAR;
+                symbol = 'R';
+            } else if (currency === 'MZN') {
+                price *= conversionRates.USD_MZN;
+                symbol = 'MT';
+            }
+            
+            // Convert weight
+            const pricePerOz = price;
+            price = pricePerOz * weightConversions[weight];
+            
+            // Get weight label
+            const weightLabels = {
+                oz: 'Troy Ounce',
+                g: 'Gram',
+                kg: 'Kilogram'
+            };
+            
+            // Update display
+            document.getElementById('currencySymbol').textContent = symbol;
+            document.getElementById('priceValue').textContent = price.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            document.getElementById('priceUnit').textContent = `per ${weightLabels[weight]}`;
+            
+            // Update chart
+            updateChart(currency, weight, weightLabels[weight]);
+        }
+
+        function updateChart(currency, weight, weightLabel) {
+            let data = historicalData.data.slice();
+            
+            // Convert prices
+            if (currency === 'ZAR') {
+                data = data.map(p => p * conversionRates.USD_ZAR);
+            } else if (currency === 'MZN') {
+                data = data.map(p => p * conversionRates.USD_MZN);
+            }
+            
+            // Convert weight
+            data = data.map(p => Math.round(p * weightConversions[weight] * 100) / 100);
+            
+            chart.data.datasets[0].data = data;
+            chart.data.datasets[0].label = `Gold Price (${currency}/${weightLabel})`;
+            chart.update();
+        }
+
+        // Simulate real-time updates
+        setInterval(() => {
+            basePrice += (Math.random() - 0.5) * 5;
+            updatePrice();
+            
+            const now = new Date();
+            document.getElementById('timestamp').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }, 5000);
+
+        // Update timestamp
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('timestamp').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }, 1000);
+    </script>
+</body>
+</html>

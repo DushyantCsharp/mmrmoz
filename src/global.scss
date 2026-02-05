@@ -1,0 +1,128 @@
+/* Core CSS required for Ionic components to work properly */
+@import "@ionic/angular/css/core.css";
+
+/* Basic CSS for apps built with Ionic */
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+@import '@ionic/angular/css/display.css';
+
+/* Optional CSS utils that can be commented out */
+@import "@ionic/angular/css/padding.css";
+@import "@ionic/angular/css/float-elements.css";
+@import "@ionic/angular/css/text-alignment.css";
+@import "@ionic/angular/css/text-transformation.css";
+@import "@ionic/angular/css/flex-utils.css";
+
+/* Custom Global Styles - Professional Black and Gold Theme */
+:root {
+  /* Brand */
+  --brand-gold: #d4af37;
+  --brand-gold-rgb: 212, 175, 55;
+  --brand-gold-muted: #a88a3c;
+  --brand-gold-soft: #e4c86a;
+  --surface-1: #0b0c10;
+  --surface-2: #121318;
+  --surface-3: #161820;
+  --text-primary: #ede9df;
+  --text-secondary: #c9c2b3;
+
+  /* Primary Gold Colors */
+  --ion-color-primary: var(--brand-gold);
+  --ion-color-primary-rgb: var(--brand-gold-rgb);
+  --ion-color-primary-contrast: #0b0c10;
+  --ion-color-primary-contrast-rgb: 11, 12, 16;
+  --ion-color-primary-shade: #b9922f;
+  --ion-color-primary-tint: #e0c15a;
+
+  /* Secondary Dark Colors */
+  --ion-color-secondary: var(--surface-2);
+  --ion-color-secondary-rgb: 18, 19, 24;
+  --ion-color-secondary-contrast: var(--brand-gold);
+  --ion-color-secondary-contrast-rgb: var(--brand-gold-rgb);
+  --ion-color-secondary-shade: #101115;
+  --ion-color-secondary-tint: #22242a;
+
+  /* Dark Theme Colors */
+  --ion-color-dark: var(--surface-1);
+  --ion-color-dark-rgb: 11, 12, 16;
+  --ion-color-dark-contrast: var(--brand-gold);
+  --ion-color-dark-contrast-rgb: var(--brand-gold-rgb);
+  --ion-color-dark-shade: #0a0b0e;
+  --ion-color-dark-tint: #1c1e24;
+
+  /* Background and Text */
+  --ion-background-color: var(--surface-1);
+  --ion-background-color-rgb: 11, 12, 16;
+  --ion-text-color: var(--text-primary);
+  --ion-text-color-rgb: 237, 233, 223;
+
+  /* Toolbar */
+  --ion-toolbar-background: #0f1014;
+  --ion-toolbar-border-color: rgba(212, 175, 55, 0.2);
+  --ion-toolbar-color: var(--text-primary);
+  --ion-toolbar-segment-color: var(--text-secondary);
+  --ion-toolbar-segment-color-checked: #0b0c10;
+  --ion-toolbar-segment-background: var(--surface-2);
+  --ion-toolbar-segment-background-checked: var(--brand-gold);
+
+  /* Item */
+  --ion-item-background: transparent;
+  --ion-item-color: var(--text-primary);
+}
+
+body {
+  background: radial-gradient(1200px at 15% -10%, rgba(212, 175, 55, 0.12), transparent 45%),
+    radial-gradient(900px at 85% 0%, rgba(212, 175, 55, 0.06), transparent 50%),
+    var(--surface-1);
+  color: var(--text-primary);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-gold);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ion-color-primary-shade);
+}
+
+/* Select Popover Styling */
+.select-popover {
+  .popover-content {
+    background: var(--surface-2);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+
+  ion-list {
+    background: var(--surface-2);
+  }
+
+  ion-item {
+    --background: var(--surface-2);
+    --color: var(--text-primary);
+    --border-color: rgba(212, 175, 55, 0.2);
+
+    &.item-radio-checked {
+      --background: rgba(212, 175, 55, 0.12);
+      --color: var(--brand-gold);
+      font-weight: 700;
+    }
+  }
+
+  ion-radio {
+    --color: var(--brand-gold);
+    --color-checked: var(--brand-gold);
+  }
+}
