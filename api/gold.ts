@@ -19,19 +19,37 @@ async function handler(req: any, res: any) {
     }
 
     const data = await response.json();
-    const rates = data?.rates || {};
-    const xauRate = Number(rates.XAU);
-    const usdToZar = Number(rates.ZAR);
-    const usdToMzn = Number(rates.MZN);
-
-    if (!xauRate || !usdToZar || !usdToMzn) {
-      res.status(502).json({ error: 'Invalid rates from upstream' });
+    if (data?.success === false) {
+      res.status(502).json({ error: data?.error?.info || 'Upstream error' });
       return;
     }
 
-    // MetalpriceAPI returns rates relative to base (USD).
-    // For metals, XAU is typically oz per USD, so invert to get USD/oz.
-    const usdPerOz = xauRate < 1 ? 1 / xauRate : xauRate;
+    const rates = data?.rates || {};
+    const usdPerOz = resolveUsdPerOz(rates);
+    let usdToZar = numberOrNull(rates.ZAR ?? rates.USDZAR);
+    let usdToMzn = numberOrNull(rates.MZN ?? rates.USDMZN);
+
+    if ((!usdToZar || !usdToMzn) && (usdToZar === null || usdToMzn === null)) {
+      const fx = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=ZAR,MZN');
+      if (fx.ok) {
+        const fxData = await fx.json();
+        const fxRates = fxData?.rates || {};
+        if (!usdToZar) usdToZar = numberOrNull(fxRates.ZAR);
+        if (!usdToMzn) usdToMzn = numberOrNull(fxRates.MZN);
+      }
+    }
+
+    if (!usdPerOz || !usdToZar || !usdToMzn) {
+      res.status(502).json({
+        error: 'Invalid rates from upstream',
+        missing: {
+          usdPerOz: !usdPerOz,
+          usdToZar: !usdToZar,
+          usdToMzn: !usdToMzn
+        }
+      });
+      return;
+    }
 
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
     res.status(200).json({
@@ -46,3 +64,16 @@ async function handler(req: any, res: any) {
 }
 
 module.exports = handler;
+
+function numberOrNull(value: any): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function resolveUsdPerOz(rates: any): number | null {
+  const direct = numberOrNull(rates.USDXAU);
+  if (direct) return direct;
+  const xau = numberOrNull(rates.XAU);
+  if (!xau) return null;
+  return xau < 1 ? 1 / xau : xau;
+}
