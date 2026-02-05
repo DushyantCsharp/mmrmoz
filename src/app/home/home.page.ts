@@ -11,7 +11,7 @@ import { ChartConfiguration } from 'chart.js';
 })
 export class HomePage implements OnInit, OnDestroy {
   currentPrice: GoldPrice | null = null;
-  selectedCurrency: Currency = 'USD';
+  selectedCurrency: Currency = 'MZN';
   selectedWeight: Weight = 'oz';
   
   currencies: Currency[] = ['MZN', 'USD', 'ZAR'];
@@ -22,20 +22,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   // Chart configuration
   public lineChartData: ChartConfiguration['data'] = {
-    datasets: [
-      {
-        data: [],
-        label: 'Gold Price',
-        backgroundColor: 'rgba(255, 215, 0, 0.1)',
-        borderColor: '#D4AF37',
-        pointBackgroundColor: '#D4AF37',
-        pointBorderColor: '#000',
-        pointHoverBackgroundColor: '#D4AF37',
-        pointHoverBorderColor: '#D4AF37',
-        fill: true,
-        tension: 0.4
-      }
-    ],
+    datasets: [],
     labels: []
   };
 
@@ -101,14 +88,39 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   updateChart() {
-    const historicalData = this.goldPriceService.getHistoricalData(this.selectedCurrency, this.selectedWeight);
-    
-    this.lineChartData.labels = historicalData.map(d => 
+    const historicalData = this.goldPriceService.getHistoricalData(this.selectedCurrency, 'oz');
+
+    this.lineChartData.labels = historicalData.map(d =>
       d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     );
-    
-    this.lineChartData.datasets[0].data = historicalData.map(d => d.price);
-    this.lineChartData.datasets[0].label = `Gold Price (${this.selectedCurrency}/${this.goldPriceService.getWeightLabel(this.selectedWeight)})`;
+
+    const datasets = this.weights.map((weight, index) => {
+      const data = this.goldPriceService
+        .getHistoricalData(this.selectedCurrency, weight)
+        .map(d => d.price);
+
+      const palette = [
+        { border: '#D4AF37', fill: 'rgba(212, 175, 55, 0.18)' },
+        { border: '#8FB7FF', fill: 'rgba(143, 183, 255, 0.14)' },
+        { border: '#7AD9B1', fill: 'rgba(122, 217, 177, 0.14)' }
+      ];
+      const colors = palette[index % palette.length];
+
+      return {
+        data,
+        label: `${this.goldPriceService.getWeightLabel(weight)}`,
+        backgroundColor: colors.fill,
+        borderColor: colors.border,
+        pointBackgroundColor: colors.border,
+        pointBorderColor: '#0b0c10',
+        pointHoverBackgroundColor: colors.border,
+        pointHoverBorderColor: colors.border,
+        fill: true,
+        tension: 0.35
+      };
+    });
+
+    this.lineChartData.datasets = datasets;
   }
 
   get displayPrice(): string {
