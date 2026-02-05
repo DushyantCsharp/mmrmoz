@@ -1,4 +1,4 @@
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   const apiKey = process.env.METALPRICE_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: 'Missing METALPRICE_API_KEY' });
@@ -44,3 +44,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: err?.message || 'Server error' });
   }
 }
+
+module.exports = handler;
