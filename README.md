@@ -200,7 +200,7 @@ This app uses a Vercel Serverless Function to fetch live gold and FX rates.
 
 Set the following environment variable in Vercel:
 
-- `COMMODITYPRICE_API_KEY`
+- `METALAPI_KEY`
 
 The function is located at `api/gold.ts` and the app calls it via `/api/gold`.
 

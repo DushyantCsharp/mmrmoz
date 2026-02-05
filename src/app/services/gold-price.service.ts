@@ -71,7 +71,12 @@ export class GoldPriceService {
     const currentData = this.historicalDataSubject.value;
     let newData = currentData;
 
-    if (currentData.length === 0) {
+    if (payload.monthlyHistory && payload.monthlyHistory.length > 0) {
+      newData = payload.monthlyHistory.map(point => ({
+        date: new Date(point.date),
+        price: Math.round(point.price * 100) / 100
+      }));
+    } else if (currentData.length === 0) {
       // Seed monthly history so the chart isn't empty
       const baseDate = new Date(payload.timestamp);
       newData = Array.from({ length: this.maxHistoryPoints }, (_, index) => {
@@ -195,4 +200,5 @@ interface LivePricePayload {
   usdPerOz: number;
   usdToZar: number;
   usdToMzn: number;
+  monthlyHistory?: Array<{ date: string; price: number }>;
 }
