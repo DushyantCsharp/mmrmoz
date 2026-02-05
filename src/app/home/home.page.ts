@@ -91,7 +91,7 @@ export class HomePage implements OnInit, OnDestroy {
     const historicalData = this.goldPriceService.getHistoricalData(this.selectedCurrency, 'oz');
 
     this.lineChartData.labels = historicalData.map(d =>
-      d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      d.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     );
 
     const datasets = this.weights.map((weight, index) => {

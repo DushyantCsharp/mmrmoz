@@ -10,7 +10,7 @@ import { GoldPrice, Currency, Weight, PriceData, ConversionRates } from '../mode
 export class GoldPriceService {
   private readonly apiUrl = '/api/gold';
   private readonly updateIntervalMs = 60000;
-  private readonly maxHistoryPoints = 30;
+  private readonly maxHistoryPoints = 12;
 
   private currentPriceSubject = new BehaviorSubject<GoldPrice | null>(null);
   public currentPrice$: Observable<GoldPrice | null> = this.currentPriceSubject.asObservable();
@@ -72,23 +72,38 @@ export class GoldPriceService {
     let newData = currentData;
 
     if (currentData.length === 0) {
-      // Seed initial history so the chart isn't empty
-      const baseTime = new Date(payload.timestamp).getTime();
+      // Seed monthly history so the chart isn't empty
+      const baseDate = new Date(payload.timestamp);
       newData = Array.from({ length: this.maxHistoryPoints }, (_, index) => {
-        const minutesAgo = (this.maxHistoryPoints - 1 - index);
+        const date = new Date(baseDate);
+        date.setMonth(baseDate.getMonth() - (this.maxHistoryPoints - 1 - index));
         return {
-          date: new Date(baseTime - minutesAgo * this.updateIntervalMs),
+          date,
           price: Math.round(payload.usdPerOz * 100) / 100
         };
       });
     } else {
-      newData = [
-        ...currentData,
-        {
-          date: new Date(payload.timestamp),
+      const latest = currentData[currentData.length - 1];
+      const incomingDate = new Date(payload.timestamp);
+      const sameMonth =
+        latest.date.getFullYear() === incomingDate.getFullYear() &&
+        latest.date.getMonth() === incomingDate.getMonth();
+
+      if (sameMonth) {
+        newData = [...currentData];
+        newData[newData.length - 1] = {
+          date: incomingDate,
           price: Math.round(payload.usdPerOz * 100) / 100
-        }
-      ];
+        };
+      } else {
+        newData = [
+          ...currentData,
+          {
+            date: incomingDate,
+            price: Math.round(payload.usdPerOz * 100) / 100
+          }
+        ];
+      }
     }
 
     if (newData.length > this.maxHistoryPoints) {
