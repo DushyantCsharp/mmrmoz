@@ -69,13 +69,27 @@ export class GoldPriceService {
     this.updateCurrentPrice(payload.usdPerOz, payload.timestamp);
 
     const currentData = this.historicalDataSubject.value;
-    const newData = [
-      ...currentData,
-      {
-        date: new Date(payload.timestamp),
-        price: Math.round(payload.usdPerOz * 100) / 100
-      }
-    ];
+    let newData = currentData;
+
+    if (currentData.length === 0) {
+      // Seed initial history so the chart isn't empty
+      const baseTime = new Date(payload.timestamp).getTime();
+      newData = Array.from({ length: this.maxHistoryPoints }, (_, index) => {
+        const minutesAgo = (this.maxHistoryPoints - 1 - index);
+        return {
+          date: new Date(baseTime - minutesAgo * this.updateIntervalMs),
+          price: Math.round(payload.usdPerOz * 100) / 100
+        };
+      });
+    } else {
+      newData = [
+        ...currentData,
+        {
+          date: new Date(payload.timestamp),
+          price: Math.round(payload.usdPerOz * 100) / 100
+        }
+      ];
+    }
 
     if (newData.length > this.maxHistoryPoints) {
       newData.shift();
